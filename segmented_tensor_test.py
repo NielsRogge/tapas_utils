@@ -116,6 +116,21 @@ class SegmentedTensorTest(unittest.TestCase):
                 # We use np.testing.assert_array_equal rather than Tensorflow's assertAllEqual
                 np.testing.assert_array_equal(indices[i, j, :].numpy(), range(num_segments))
     
+    def test_reduce_sum(self):
+        values, row_index, col_index = self._prepare_tables()
+        cell_index = segmented_tensor.ProductIndexMap(row_index, col_index)
+        row_sum, _ = segmented_tensor.reduce_sum(values, row_index)
+        col_sum, _ = segmented_tensor.reduce_sum(values, col_index)
+        cell_sum, _ = segmented_tensor.reduce_sum(values, cell_index)
+    
+        # We use np.testing.assert_allclose rather than Tensorflow's assertAllClose
+        np.testing.assert_allclose(row_sum.numpy(), [[6.0, 3.0, 8.0], [6.0, 3.0, 8.0]])
+        np.testing.assert_allclose(col_sum.numpy(), [[9.0, 8.0, 0.0], [4.0, 5.0, 8.0]])
+        np.testing.assert_allclose(
+            cell_sum.numpy(), [[3.0, 3.0, 0.0, 2.0, 1.0, 0.0, 4.0, 4.0, 0.0],
+                                [1.0, 2.0, 3.0, 2.0, 0.0, 1.0, 1.0, 3.0, 4.0]])
+
+    
     """
     def test_gather(self):
         values, row_index, col_index = self._prepare_tables()
