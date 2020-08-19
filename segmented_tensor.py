@@ -118,7 +118,7 @@ def range_index_map(batch_shape, num_segments, name='range_index_map'):
     Returns:
         IndexMap of shape batch_shape with elements equal to range(num_segments).
     """
-    batch_shape = torch.as_tensor(batch_shape) # create a rank 1 tensor vector containing batch_shape (e.g. [2]) 
+    batch_shape = torch.as_tensor(batch_shape, dtype=torch.int64) # create a rank 1 tensor vector containing batch_shape (e.g. [2]) 
     assert len(batch_shape.size()) == 1
     num_segments = torch.as_tensor(num_segments) # create a rank 0 tensor (scalar) containing num_segments (e.g. 64)
     assert len(num_segments.size()) == 0
@@ -133,7 +133,7 @@ def range_index_map(batch_shape, num_segments, name='range_index_map'):
     new_shape = [int(x) for x in new_tensor.tolist()]
     indices = indices.view(new_shape) 
     
-    multiples = torch.cat([batch_shape, torch.as_tensor([1])], dim=0).type(torch.int64)
+    multiples = torch.cat([batch_shape, torch.as_tensor([1])], dim=0)
     indices = indices.repeat(multiples.tolist()) 
     # equivalent (in Numpy:)
     #indices = torch.as_tensor(np.tile(indices.numpy(), multiples.tolist()))
@@ -153,13 +153,38 @@ def _segment_reduce(values, index, segment_reduce_fn, name):
     flattened_shape = torch.cat([torch.as_tensor([-1],dtype=torch.int64), torch.as_tensor(vector_shape, dtype=torch.int64)], dim=0)
     flat_values = values.view(flattened_shape.tolist())
 
+    # currently:
+    # flat_index.indices = torch.FloatTensor
+    # flat_values = torch.LongTensor
+
+    # we make src and out should be FloatTensors,
+    # and index.indices should be LongTensor
+
+    #print(flat_index.indices)
+    #print(flat_values)
+
     segment_means = scatter(src=flat_values, index=flat_index.indices.type(torch.int64), dim=0, reduce=segment_reduce_fn)
+
+    #print(segment_means)
+    
+    #torch.zeros(18, 1).scatter_add(1, flat_index.indices.unsqueeze(-1), flat_values.unsqueeze(-1))
+    
+    #print(torch.as_tensor(vector_shape, dtype=torch.int64))
+    #print(torch.as_tensor(index.batch_shape()))
+    #print(torch.as_tensor(index.num_segments, dtype=torch.int64))
     
     # Unflatten the values.
     new_shape = torch.cat(
-        [torch.as_tensor(index.batch_shape(), dtype=torch.int64), torch.as_tensor([index.num_segments], dtype=torch.int64)], dim=0)
+        [torch.as_tensor(index.batch_shape(), dtype=torch.int64), 
+        torch.as_tensor([index.num_segments], dtype=torch.int64),
+        torch.as_tensor(vector_shape, dtype=torch.int64)],
+        dim=0)
+    #print("New shape:")
+    #print(new_shape)
+    
     output_values = segment_means.view(new_shape.tolist())
     output_index = range_index_map(index.batch_shape(), index.num_segments)
+    #return None
     return output_values, output_index
 
 def reduce_sum(values, index, name='segmented_reduce_sum'):
@@ -182,6 +207,47 @@ def reduce_sum(values, index, name='segmented_reduce_sum'):
         IndexMap with shape [B1, B2, ..., Bn, num_segments].
     """
     return _segment_reduce(values, index, "sum", name)
+
+def reduce_mean(values, index, name='segmented_reduce_mean'):
+    """Averages a tensor over its segments.
+    Outputs 0 for empty segments.
+    This operations computes the mean over segments, with support for:
+        - Batching using the first dimensions [B1, B2, ..., Bn]. Each element in
+        a batch can have different indices.
+        - Vectorization using the last dimension [V1, V2, ...]. If they are present
+        the output will be a mean of vectors rather than scalars.
+    Only the middle dimensions [I1, ..., Ik] are reduced by the operation.
+    Args:
+        values: [B1, B2, ..., Bn, I1, .., Ik, V1, V2, ..] tensor of values to be
+        averaged.
+        index: IndexMap [B1, B2, ..., Bn, I1, .., Ik] index defining the segments.
+        name: Name for the TensorFlow ops.
+    Returns:
+        A pair (output_values, output_index) where `output_values` is a tensor
+        of shape [B1, B2, ..., Bn, num_segments, V1, V2, ..] and `index` is an
+        IndexMap with shape [B1, B2, ..., Bn, num_segments].
+    """
+    return _segment_reduce(values, index, "mean", name)
+
+def reduce_max(values, index, name='segmented_reduce_max'):
+    """Computes the maximum over segments.
+    This operations computes the maximum over segments, with support for:
+        - Batching using the first dimensions [B1, B2, ..., Bn]. Each element in
+        a batch can have different indices.
+        - Vectorization using the last dimension [V1, V2, ...]. If they are present
+        the output will be an element-wise maximum of vectors rather than scalars.
+    Only the middle dimensions [I1, ..., Ik] are reduced by the operation.
+    Args:
+        values: [B1, B2, ..., Bn, I1, .., Ik, V1, V2, ..] tensor of values to be
+        averaged.
+        index: IndexMap [B1, B2, ..., Bn, I1, .., Ik] index defining the segments.
+        name: Name for the TensorFlow ops.
+    Returns:
+        A pair (output_values, output_index) where `output_values` is a tensor
+        of shape [B1, B2, ..., Bn, num_segments, V1, V2, ..] and `index` is an
+        IndexMap with shape [B1, B2, ..., Bn, num_segments].
+    """
+    return _segment_reduce(values, index, "max", name)
 
 
 

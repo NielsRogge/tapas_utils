@@ -130,8 +130,46 @@ class SegmentedTensorTest(unittest.TestCase):
             cell_sum.numpy(), [[3.0, 3.0, 0.0, 2.0, 1.0, 0.0, 4.0, 4.0, 0.0],
                                 [1.0, 2.0, 3.0, 2.0, 0.0, 1.0, 1.0, 3.0, 4.0]])
 
-    
-    """
+    def test_reduce_mean(self):
+        values, row_index, col_index = self._prepare_tables()
+        cell_index = segmented_tensor.ProductIndexMap(row_index, col_index)
+        row_mean, _ = segmented_tensor.reduce_mean(values, row_index)
+        col_mean, _ = segmented_tensor.reduce_mean(values, col_index)
+        cell_mean, _ = segmented_tensor.reduce_mean(values, cell_index)
+        
+        # We use np.testing.assert_allclose rather than Tensorflow's assertAllClose
+        np.testing.assert_allclose(
+            row_mean.numpy(), [[6.0 / 3.0, 3.0 / 3.0, 8.0 / 3.0],
+                                [6.0 / 3.0, 3.0 / 3.0, 8.0 / 3.0]])
+        np.testing.assert_allclose(
+            col_mean.numpy(),
+            [[9.0 / 6.0, 8.0 / 3.0, 0.0], [4.0 / 3.0, 5.0 / 3.0, 8.0 / 3.0]])
+        np.testing.assert_allclose(
+            cell_mean.numpy(),
+            [[3.0 / 2.0, 3.0, 0.0, 2.0 / 2.0, 1.0, 0.0, 4.0 / 2.0, 4.0, 0.0],
+            [1.0, 2.0, 3.0, 2.0, 0.0, 1.0, 1.0, 3.0, 4.0]])
+
+    def test_reduce_max(self):
+        values = torch.as_tensor([2., 1., 0., 3.])
+        index = segmented_tensor.IndexMap(indices=torch.as_tensor([0, 1, 0, 1]), num_segments=2)
+        maximum, _ = segmented_tensor.reduce_max(values, index)
+        
+        # We use np.testing.assert_array_equal rather than Tensorflow's assertAllEqual
+        np.testing.assert_array_equal(maximum.numpy(), [2, 3])
+
+    def test_reduce_sum_vectorized(self):
+        values = torch.as_tensor([[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]])
+        index = segmented_tensor.IndexMap(
+            indices=torch.as_tensor([0, 0, 1]), num_segments=2, batch_dims=0)
+        sums, new_index = segmented_tensor.reduce_sum(values, index)
+        
+        # We use np.testing.assert_allclose rather than Tensorflow's assertAllClose
+        np.testing.assert_allclose(sums.numpy(), [[3.0, 5.0, 7.0], [3.0, 4.0, 5.0]])
+        # We use np.testing.assert_array_equal rather than Tensorflow's assertAllEqual
+        np.testing.assert_array_equal(new_index.indices.numpy(), [0, 1])
+        np.testing.assert_array_equal(new_index.num_segments.numpy(), 2)
+        np.testing.assert_array_equal(new_index.batch_dims, 0)
+        
     def test_gather(self):
         values, row_index, col_index = self._prepare_tables()
         cell_index = segmented_tensor.ProductIndexMap(row_index, col_index)
@@ -140,6 +178,12 @@ class SegmentedTensorTest(unittest.TestCase):
         # the original table and each element should contain the sum the values in
         # its cell.
         sums, _ = segmented_tensor.reduce_sum(values, cell_index)
+        print("Sums:")
+        print(sums)
+        print("Cell index:")
+        print(cell_index.indices)
+        print("Batch dims:")
+        print(cell_index.batch_dims)
         cell_sum = segmented_tensor.gather(sums, cell_index)
         assert cell_sum.size() == values.size()
 
@@ -149,7 +193,6 @@ class SegmentedTensorTest(unittest.TestCase):
             [[[3.0, 3.0, 3.0], [2.0, 2.0, 1.0], [4.0, 4.0, 4.0]],
             [[1.0, 2.0, 3.0], [2.0, 0.0, 1.0], [1.0, 3.0, 4.0]]]
         )
-    """
 
 
 if __name__ == '__main__':
