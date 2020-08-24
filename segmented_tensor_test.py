@@ -178,14 +178,11 @@ class SegmentedTensorTest(unittest.TestCase):
         # the original table and each element should contain the sum the values in
         # its cell.
         sums, _ = segmented_tensor.reduce_sum(values, cell_index)
-        print("Sums:")
-        print(sums)
-        print("Cell index:")
-        print(cell_index.indices)
-        print("Batch dims:")
-        print(cell_index.batch_dims)
         cell_sum = segmented_tensor.gather(sums, cell_index)
         assert cell_sum.size() == values.size()
+
+        print("Cell sum:")
+        print(cell_sum)
 
         # We use np.testing.assert_array_equal rather than Tensorflow's assertAllEqual
         np.testing.assert_allclose(
@@ -193,6 +190,16 @@ class SegmentedTensorTest(unittest.TestCase):
             [[[3.0, 3.0, 3.0], [2.0, 2.0, 1.0], [4.0, 4.0, 4.0]],
             [[1.0, 2.0, 3.0], [2.0, 0.0, 1.0], [1.0, 3.0, 4.0]]]
         )
+
+    def test_gather_vectorized(self):
+        values = torch.as_tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+        index = segmented_tensor.IndexMap(
+            indices=torch.as_tensor([[0, 1], [1, 0]]), num_segments=2, batch_dims=1)
+        result = segmented_tensor.gather(values, index)
+        
+        # We use np.testing.assert_array_equal rather than Tensorflow's assertAllEqual
+        np.testing.assert_array_equal(
+            result.numpy(), [[[1, 2], [3, 4]], [[7, 8], [5, 6]]])
 
 
 if __name__ == '__main__':

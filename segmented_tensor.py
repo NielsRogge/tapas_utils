@@ -79,8 +79,24 @@ def gather(values, index, name='segmented_gather'):
     Returns:
         [B1, ..., Bn, I1, ..., Ik, V1, ...] Tensor with the gathered values.
     """
-    return torch.gather(
-        input=values, index=index.indices, dim=index.batch_dims)
+    print("Values:")
+    print(values)
+    print("Index:")
+    print(index.indices)
+    indices = index.indices
+    # first, check whether the indices of the index represent scalar values (i.e. not vectorized)
+    if len(values.shape[index.batch_dims:]) < 2:
+        return torch.gather(values, 
+                        index.batch_dims, 
+                        indices.view(values.size()[0], -1) # torch.gather expects index to have the same number of dimensions as values
+                       ).view(indices.size())
+    else:
+        # this means we have a vectorized version
+        # we have to adjust the index
+        indices = indices.unsqueeze(-1).expand(values.shape)
+        return torch.gather(values, index.batch_dims, indices)
+    #out = torch.zeros(index.indices.size())
+    #return values.squeeze(index.batch_dims)[index.indices]
 
 def flatten(index, name='segmented_flatten'):
     """Flattens a batched index map (which is typically of shape batch_size, seq_length) to a 1d index map.
