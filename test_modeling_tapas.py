@@ -86,9 +86,9 @@ class TapasModelIntegrationTest(unittest.TestCase):
         expected_shape = torch.Size((1, 21))
         self.assertEqual(logits.shape, expected_shape)
         expected_tensor = torch.tensor([[-9997.22461, -9997.22461, -9997.22461, -9997.22461, -9997.22461,
-        -9997.22461, -9997.22461, -9997.22461, -9997.22461, -16.2628059, 
-        -10004.082, 15.4330549, 15.4330549, 15.4330549, -9990.42,
-        -16.3270779, -16.3270779, -16.3270779, -16.3270779, -16.3270779, -10004.8506]]) # ok
+                            -9997.22461, -9997.22461, -9997.22461, -9997.22461, -16.2628059, 
+                            -10004.082, 15.4330549, 15.4330549, 15.4330549, -9990.42,
+                            -16.3270779, -16.3270779, -16.3270779, -16.3270779, -16.3270779, -10004.8506]]) # ok
 
         self.assertTrue(torch.allclose(logits, expected_tensor, atol=1e-4))
 
@@ -104,9 +104,9 @@ class TapasModelIntegrationTest(unittest.TestCase):
         expected_shape = torch.Size((1, 21))
         self.assertEqual(logits.shape, expected_shape)
         expected_slice = torch.tensor([[-10096.3633, -10096.3633, -10096.3633, -10096.3633, -10096.3633,
-        -10096.3633, -10096.3633, -10096.3633, -10096.3633, -180.192322,
-        -10080.2305, 157.994827, 157.994827, 157.994827, -10031.3721,
-        -142.52597, -142.52597, -142.52597, -142.52597, -142.52597, -10065.7256]])  # ok 
+                            -10096.3633, -10096.3633, -10096.3633, -10096.3633, -180.192322,
+                            -10080.2305, 157.994827, 157.994827, 157.994827, -10031.3721,
+                            -142.52597, -142.52597, -142.52597, -142.52597, -142.52597, -10065.7256]])  # ok 
 
         self.assertTrue(torch.allclose(logits, expected_slice, atol=1e-4))
 
@@ -129,15 +129,21 @@ class TapasModelIntegrationTest(unittest.TestCase):
         logits = outputs.logits
         expected_shape = torch.Size((1, 21))
         self.assertEqual(logits.shape, expected_shape)
-        expected_tensor = torch.tensor([[-0.9469, 0.3913, 0.5118]])
+        expected_tensor = torch.tensor([[-10011.1084, -10011.1084, -10011.1084, -10011.1084, -10011.1084, 
+                            -10011.1084, -10011.1084, -10011.1084, -10011.1084, -18.6185989, 
+                            -10008.7969, 17.6355762, 17.6355762, 17.6355762, -10002.4404, 
+                            -18.7111301, -18.7111301, -18.7111301, -18.7111301, -18.7111301, -10007.0977]]) # ok
+
+        self.assertTrue(torch.allclose(logits, expected_tensor, atol=1e-4))
+
 
         # test the aggregation logits
         logits_aggregation = outputs.logits_aggregation
         expected_shape = torch.Size((1, 4))
         self.assertEqual(logits_aggregation.shape, expected_shape)
-        expected_tensor = torch.tensor([[-0.9469, 0.3913, 0.5118]])
+        expected_tensor = torch.tensor([[16.5659733, -3.06624889, -2.34152961, -0.970244825]]) # ok, PyTorch model outputs [[16.5679, -3.0668, -2.3442, -0.9674]]
 
-        self.assertTrue(torch.allclose(output, expected_tensor, atol=1e-4))
+        self.assertTrue(torch.allclose(logits_aggregation, expected_tensor, atol=1e-4))
     
     @slow
     def test_inference_classification_head(self):
@@ -145,7 +151,7 @@ class TapasModelIntegrationTest(unittest.TestCase):
         model = TapasForSequenceClassification.from_pretrained("google/tapas-base-finetuned-tabfact")
 
         inputs = prepare_tapas_inputs_for_inference()
-        outputs = model(*inputs)
+        outputs = model(**inputs)
 
         # test the classification logits
         logits = outputs.logits
