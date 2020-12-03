@@ -41,6 +41,7 @@ def prepare_tapas_inputs_for_inference():
 class TapasModelIntegrationTest(unittest.TestCase):
     @slow
     def test_inference_no_head(self):
+        #note that google/tapas-base should correspond to tapas_inter_masklm_base_reset
         model = TapasModel.from_pretrained("google/tapas-base")
 
         inputs = prepare_tapas_inputs_for_inference()
@@ -81,10 +82,15 @@ class TapasModelIntegrationTest(unittest.TestCase):
         outputs = model(**inputs)
         # test the logits
         logits = outputs.logits
-        expected_shape = torch.Size((1, 11))
+        expected_shape = torch.Size((1, 21))
         self.assertEqual(logits.shape, expected_shape)
-        expected_tensor = torch.tensor([[-0.9469, 0.3913, 0.5118]])
-    
+        expected_tensor = torch.tensor([[-9997.22461, -9997.22461, -9997.22461, -9997.22461, -9997.22461,
+        -9997.22461, -9997.22461, -9997.22461, -9997.22461, -16.2628059, 
+        -10004.082, 15.4330549, 15.4330549, 15.4330549, -9990.42,
+        -16.3270779, -16.3270779, -16.3270779, -16.3270779, -16.3270779, -10004.8506]])
+
+        self.assertTrue(torch.allclose(logits, expected_tensor, atol=1e-4))
+
     @slow
     def test_inference_question_answering_head_weak_supervision(self):
         # note that google/tapas-base-finetuned-wtq should correspond to tapas_wtq_wikisql_sqa_inter_masklm_base_reset
@@ -96,21 +102,12 @@ class TapasModelIntegrationTest(unittest.TestCase):
         logits = outputs.logits
         expected_shape = torch.Size((1, 21))
         self.assertEqual(logits.shape, expected_shape)
-        expected_slice = torch.tensor([[-115.892899 -116.121376 -113.184395]]) 
-        # doesn't seem to be ok. PyTorch implementation returns the following logits:
-        # [[-10096.3135, -10096.3135, -10096.3135, -10096.3135, -10096.3135,
-        #  -10096.3135, -10096.3135, -10096.3135, -10096.3135,   -180.0563,
-        #  -10080.2783,    157.3346,    157.3346,    157.3346, -10031.4375,
-        #    -142.1773,   -142.1773,   -142.1773,   -142.1773,   -142.1773,
-        #  -10065.6104]], 
-        # and it gets the answer correctly.. TF implementation returns this:
-        # logits[[-115.892899 -116.121376 -113.184395 -106.654701 -101.882393 
-        # -84.635582 -104.655479 -102.582481 -21.6584129 -180.192322 -80.2306 
-        # 164.683411 172.832245 136.468826 -31.3715973 -140.949677 -156.210983 
-        # -158.606552 -135.712646 -121.149963 -65.725914]] 
-        # weirdly, both have 3 logits which are > 0 at the same place
+        expected_slice = torch.tensor([[-10096.3633, -10096.3633, -10096.3633, -10096.3633, -10096.3633,
+        -10096.3633, -10096.3633, -10096.3633, -10096.3633, -180.192322,
+        -10080.2305, 157.994827, 157.994827, 157.994827, -10031.3721,
+        -142.52597, -142.52597, -142.52597, -142.52597, -142.52597, -10065.7256]])  # ok 
 
-        self.assertTrue(torch.allclose(logits[:,:3], expected_slice, atol=1e-4))
+        self.assertTrue(torch.allclose(logits, expected_slice, atol=1e-4))
 
         # test the aggregation logits
         logits_aggregation = outputs.logits_aggregation
