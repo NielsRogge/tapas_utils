@@ -1,5 +1,5 @@
 def prepare_tapas_inputs_for_inference():
-    # Here we've prepared the following table-question to test TAPAS inference on:
+    # Here we've prepared the following table-question pair to test TAPAS inference on:
     # data = {'Footballer': ["Lionel Messi", "Cristiano Ronaldo"], 
     #         'Age': ["33", "35"],
     # }
@@ -96,7 +96,19 @@ class TapasModelIntegrationTest(unittest.TestCase):
         logits = outputs.logits
         expected_shape = torch.Size((1, 21))
         self.assertEqual(logits.shape, expected_shape)
-        expected_slice = torch.tensor([[-115.892899 -116.121376 -113.184395]]) # ok
+        expected_slice = torch.tensor([[-115.892899 -116.121376 -113.184395]]) 
+        # doesn't seem to be ok. PyTorch implementation returns the following logits:
+        # [[-10096.3135, -10096.3135, -10096.3135, -10096.3135, -10096.3135,
+        #  -10096.3135, -10096.3135, -10096.3135, -10096.3135,   -180.0563,
+        #  -10080.2783,    157.3346,    157.3346,    157.3346, -10031.4375,
+        #    -142.1773,   -142.1773,   -142.1773,   -142.1773,   -142.1773,
+        #  -10065.6104]], 
+        # and it gets the answer correctly.. TF implementation returns this:
+        # logits[[-115.892899 -116.121376 -113.184395 -106.654701 -101.882393 
+        # -84.635582 -104.655479 -102.582481 -21.6584129 -180.192322 -80.2306 
+        # 164.683411 172.832245 136.468826 -31.3715973 -140.949677 -156.210983 
+        # -158.606552 -135.712646 -121.149963 -65.725914]] 
+        # weirdly, both have 3 logits which are > 0 at the same place
 
         self.assertTrue(torch.allclose(logits[:,:3], expected_slice, atol=1e-4))
 
