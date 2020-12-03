@@ -9,7 +9,7 @@ def prepare_tapas_inputs_for_inference():
     input_ids = torch.tensor([[101, 2029, 4362, 2003, 3943, 2086, 2214, 1029, 102, 4362,
           2287, 14377, 6752, 2072, 3943, 13675, 2923, 15668, 8923,  2080, 3486]])
     attention_mask = torch.tensor([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
-    token_type_ids = torch.tensor([0, 0, 0, 0, 0, 0, 0],
+    token_type_ids = torch.tensor([[[0, 0, 0, 0, 0, 0, 0],
                                     [0, 0, 0, 0, 0, 0, 0],
                                     [0, 0, 0, 0, 0, 0, 0],
                                     [0, 0, 0, 0, 0, 0, 0],
@@ -41,32 +41,33 @@ def prepare_tapas_inputs_for_inference():
 class TapasModelIntegrationTest(unittest.TestCase):
     @slow
     def test_inference_no_head(self):
-        #note that google/tapas-base should correspond to tapas_inter_masklm_base_reset
-        model = TapasModel.from_pretrained("google/tapas-base")
+        # ideally we want to test this with tapas_inter_masklm_base_reset
+        # but since it's not straightforward to do this with the TF 1 implementation, we test it with 
+        # the weights of the WTQ base model (i.e. tapas_wtq_wikisql_sqa_inter_masklm_base_reset)
+        model = TapasModel.from_pretrained("google/tapas-base-finetuned-wtq")
 
         inputs = prepare_tapas_inputs_for_inference()
         outputs = model(**inputs)
-        # compare the actual values for a slice.
+        # test the sequence output
         expected_slice = torch.tensor(
-            [[[-0.0231, 0.0782, 0.0074], [-0.1854, 0.0540, -0.0175], [0.0548, 0.0799, 0.1687]]]
+            [[[-0.141581565, -0.599805772, 0.747186482], 
+            [-0.143664181, -0.602008104, 0.749218345],
+            [-0.15169853, -0.603363097, 0.741370678]]]
         )
 
         self.assertTrue(torch.allclose(outputs.sequence_output[:, :3, :3], expected_slice, atol=1e-4))
-    
-    @slow
-    def test_inference_masked_lm(self):
-        model = TapasForMaskedLM.from_pretrained("google/tapas-base")
-
-        inputs = prepare_tapas_inputs_for_inference()
-        outputs = model(**inputs)
-        expected_shape = torch.Size((1, 11, 30522))
-        self.assertEqual(output.shape, expected_shape)
-        # compare the actual values for a slice.
+        
+        # test the pooled output
         expected_slice = torch.tensor(
-            [[[33.8802, -4.3103, 22.7761], [4.6539, -2.8098, 13.6253], [1.8228, -3.6898, 8.8600]]]
+            [[0.987518311, -0.970520139, -0.994303405]]
         )
 
-        self.assertTrue(torch.allclose(outputs.logits[:, :3, :3], expected_slice, atol=1e-4))
+        self.assertTrue(torch.allclose(outputs.pooled_output[:, :3], expected_slice, atol=1e-4))
+  
+    
+    @unittest.skip(reason="Model not available yet")
+    def test_inference_masked_lm(self):
+        pass
 
     # TapasForQuestionAnswering has 3 possible ways of being fine-tuned:
     # - conversational set-up (SQA)
@@ -75,7 +76,7 @@ class TapasModelIntegrationTest(unittest.TestCase):
     # We test all of them:
     @slow
     def test_inference_question_answering_head_conversational(self):
-        # note that google/tapas-base-finetuned-wtq should correspond to tapas_wtq_wikisql_sqa_inter_masklm_base_reset
+        # note that google/tapas-base-finetuned-sqa should correspond to tapas_sqa_inter_masklm_base_reset
         model = TapasForQuestionAnswering.from_pretrained("google/tapas-base-finetuned-sqa")
 
         inputs = prepare_tapas_inputs_for_inference()
