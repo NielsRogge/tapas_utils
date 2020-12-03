@@ -79,10 +79,6 @@ def gather(values, index, name='segmented_gather'):
     Returns:
         [B1, ..., Bn, I1, ..., Ik, V1, ...] Tensor with the gathered values.
     """
-    print("Values:")
-    print(values)
-    print("Index:")
-    print(index.indices)
     indices = index.indices
     # first, check whether the indices of the index represent scalar values (i.e. not vectorized)
     if len(values.shape[index.batch_dims:]) < 2:
@@ -95,8 +91,6 @@ def gather(values, index, name='segmented_gather'):
         # we have to adjust the index
         indices = indices.unsqueeze(-1).expand(values.shape)
         return torch.gather(values, index.batch_dims, indices)
-    #out = torch.zeros(index.indices.size())
-    #return values.squeeze(index.batch_dims)[index.indices]
 
 def flatten(index, name='segmented_flatten'):
     """Flattens a batched index map (which is typically of shape batch_size, seq_length) to a 1d index map.
@@ -134,7 +128,7 @@ def range_index_map(batch_shape, num_segments, name='range_index_map'):
     Returns:
         IndexMap of shape batch_shape with elements equal to range(num_segments).
     """
-    batch_shape = torch.as_tensor(batch_shape, dtype=torch.int64) # create a rank 1 tensor vector containing batch_shape (e.g. [2]) 
+    batch_shape = torch.as_tensor(batch_shape, dtype=torch.long) # create a rank 1 tensor vector containing batch_shape (e.g. [2]) 
     assert len(batch_shape.size()) == 1
     num_segments = torch.as_tensor(num_segments) # create a rank 0 tensor (scalar) containing num_segments (e.g. 64)
     assert len(num_segments.size()) == 0
@@ -166,7 +160,7 @@ def _segment_reduce(values, index, segment_reduce_fn, name):
     # unflattened. Segmented ops support vector-valued operations.
     flat_index = flatten(index)
     vector_shape = values.size()[len(index.indices.size()):] # torch.Size object
-    flattened_shape = torch.cat([torch.as_tensor([-1],dtype=torch.int64), torch.as_tensor(vector_shape, dtype=torch.int64)], dim=0)
+    flattened_shape = torch.cat([torch.as_tensor([-1],dtype=torch.long), torch.as_tensor(vector_shape, dtype=torch.long)], dim=0)
     flat_values = values.view(flattened_shape.tolist())
 
     # currently:
@@ -175,32 +169,21 @@ def _segment_reduce(values, index, segment_reduce_fn, name):
 
     # we make src and out should be FloatTensors,
     # and index.indices should be LongTensor
-
-    #print(flat_index.indices)
-    #print(flat_values)
-
-    segment_means = scatter(src=flat_values, index=flat_index.indices.type(torch.int64), dim=0, reduce=segment_reduce_fn)
-
-    #print(segment_means)
+    
+    segment_means = scatter(src=flat_values, index=flat_index.indices.type(torch.long), dim=0, reduce=segment_reduce_fn)
     
     #torch.zeros(18, 1).scatter_add(1, flat_index.indices.unsqueeze(-1), flat_values.unsqueeze(-1))
     
-    #print(torch.as_tensor(vector_shape, dtype=torch.int64))
-    #print(torch.as_tensor(index.batch_shape()))
-    #print(torch.as_tensor(index.num_segments, dtype=torch.int64))
-    
     # Unflatten the values.
     new_shape = torch.cat(
-        [torch.as_tensor(index.batch_shape(), dtype=torch.int64), 
-        torch.as_tensor([index.num_segments], dtype=torch.int64),
-        torch.as_tensor(vector_shape, dtype=torch.int64)],
+        [torch.as_tensor(index.batch_shape(), dtype=torch.long), 
+        torch.as_tensor([index.num_segments], dtype=torch.long),
+        torch.as_tensor(vector_shape, dtype=torch.long)],
         dim=0)
-    #print("New shape:")
-    #print(new_shape)
     
     output_values = segment_means.view(new_shape.tolist())
     output_index = range_index_map(index.batch_shape(), index.num_segments)
-    #return None
+
     return output_values, output_index
 
 def reduce_sum(values, index, name='segmented_reduce_sum'):
@@ -264,10 +247,3 @@ def reduce_max(values, index, name='segmented_reduce_max'):
         IndexMap with shape [B1, B2, ..., Bn, num_segments].
     """
     return _segment_reduce(values, index, "max", name)
-
-
-
-
-
-
-    
