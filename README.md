@@ -1,4 +1,4 @@
-# TAPAS_UTILS
+# TAPAS utility script
 
 This repo contains a [utility script](https://github.com/NielsRogge/tapas_utils/blob/master/parse_answer_texts.py) that you can use for the PyTorch version of the Tapas algorithm, available in the [HuggingFace Transformers library](https://huggingface.co/transformers/model_doc/tapas.html).
 
