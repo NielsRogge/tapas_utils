@@ -85,8 +85,9 @@ def _compute_cost_matrix_inner(
     A numpy matrix with shape (num_answer_texts, num_rows * num_columns).
   """
   max_candidates = 0
-  num_cells = len(table.rows) * len(table.columns)
-  num_candidates = np.zeros((len(table.rows), len(table.columns)))
+  n_rows, n_columns = table.shape[0], table.shape[1]
+  num_cells = n_rows * n_columns
+  num_candidates = np.zeros(n_rows, n_columns)
   cost_matrix = np.zeros((len(answer_texts), num_cells))
 
   for index, answer_text in enumerate(answer_texts):
