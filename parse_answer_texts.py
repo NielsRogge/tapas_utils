@@ -164,7 +164,7 @@ def _parse_answer_coordinates(table,
     column_coordinate = flatten_position % len(table.columns)
     answer.answer_coordinates.append((row_coordinate, column_coordinate))
 
-   return answer_coordinates
+  return answer_coordinates
 
 
 ### START OF UTILITIES FROM TEXT_UTILS.PY ###
