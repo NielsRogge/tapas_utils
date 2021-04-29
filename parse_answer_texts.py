@@ -51,7 +51,7 @@ def _find_matching_coordinates(table, answer_text,
                                normalize):
   normalized_text = normalize(answer_text)
   for row_index, row in table.iterrows():
-    for cell in row:
+    for column_index, cell in enumerate(row):
       if normalized_text == normalize(str(cell)):
         yield (row_index, column_index)
 
@@ -163,7 +163,7 @@ def _parse_answer_coordinates(table,
     flatten_position = column_indices[row_index]
     row_coordinate = flatten_position // len(table.columns)
     column_coordinate = flatten_position % len(table.columns)
-    answer.answer_coordinates.append((row_coordinate, column_coordinate))
+    answer_coordinates.append((row_coordinate, column_coordinate))
 
   return answer_coordinates
 
@@ -277,11 +277,13 @@ def convert_to_float(value):
 
 ### END OF UTILITIES FROM TEXT_UTILS.PY ###
 
-def _parse_answer_float(answer):
-  if len(answer.answer_texts) > 1:
+def _parse_answer_float(answer_texts, float_value):
+  if len(answer_texts) > 1:
     raise ValueError("Cannot convert to multiple answers to single float")
-  float_value = convert_to_float(answer.answer_texts[0])
-  answer.float_value = float_value
+  float_value = convert_to_float(answer_texts[0])
+  float_value = float_value
+
+  return answer_texts, float_value
 
 
 def _has_single_float_answer_equal_to(question, answer_texts, target):
@@ -370,7 +372,7 @@ def _parse_question(
 
   if not float_value:
     try:
-      _parse_answer_float(question.answer)
+      answer_texts, float_value = _parse_answer_float(answer_texts, float_value)
     except ValueError as exc:
       error_message += "[float_value: {}]".format(str(exc))
 
